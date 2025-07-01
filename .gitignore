@@ -1,0 +1,9 @@
+# Ignorar PDFs
+pdfs/
+
+# Ignorar variáveis de ambiente
+.env
+
+# Ignorar arquivos temporários
+*.pyc
+__pycache__/
