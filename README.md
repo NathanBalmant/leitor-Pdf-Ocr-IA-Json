@@ -1,117 +1,98 @@
+# 📄 Leitor de PDF com OCR + IA (FastAPI)
 
-# 🧠 OCR Inteligente de Propostas de Seguro
-
-Este projeto realiza a **extração automática de informações de propostas de seguro** a partir de **PDFs escaneados**. Ele combina OCR com Tesseract e um modelo LLM via LangChain + Groq para entregar os dados estruturados em formato JSON.
-
----
-
-## 🚀 Funcionalidades
-
-- 🖼️ Conversão de PDFs escaneados em imagens usando `pdf2image` + Poppler
-- 🔍 Extração de texto via OCR com `pytesseract`
-- 🤖 Interpretação de dados com LangChain e Groq (LLM)
-- 🔐 Variáveis sensíveis carregadas via `.env`
-- ⚠️ Tratamento de erros com `try/except` para produção
+Esta aplicação é uma **API REST em Python** que recebe arquivos PDF escaneados, converte as páginas em imagem, aplica OCR (reconhecimento óptico de caracteres) com Tesseract e utiliza um modelo LLM via LangChain para **extrair dados estruturados de propostas de seguro auto** em formato JSON.
 
 ---
 
-## 🗂 Estrutura esperada
+## 🚀 Como funciona
 
-```
-projeto/
-├── pdfs/
-│   └── PDF2.pdf          # PDF de entrada (não incluído no repositório)
-├── leitorPDF.py          # Script principal
-├── .env                  # Contém a variável GROQ_API_KEY
-├── .gitignore            # Ignora arquivos sensíveis e temporários
-└── README.md
+1. O PDF é enviado via `POST` para o endpoint `/extrair`
+2. O arquivo é convertido em imagens usando `pdf2image` + Poppler
+3. É aplicado OCR em cada imagem com `pytesseract`
+4. O texto é analisado pelo LLM via LangChain para gerar um JSON estruturado com os dados da proposta
+
+---
+
+## 📦 Instalação
+
+### 1. Clone o repositório
+
+```bash
+git clone https://github.com/NathanBalmant/leitor-Pdf-Ocr-IA-Json.git
+cd leitor-Pdf-Ocr-IA-Json
 ```
 
+### 2. Instale as dependências
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Instale o [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) e o [Poppler for Windows](https://github.com/oschwartz10612/poppler-windows/releases/)
+
+- **Tesseract**: após instalar, anote o caminho do executável (ex: `C:\Program Files\Tesseract-OCR\tesseract.exe`)
+- **Poppler**: baixe e extraia. Use o caminho da pasta `Library/bin` (ex: `C:\poppler-xx\Library\bin`)
+
 ---
 
-## ⚙️ Requisitos
+## 🔐 Variáveis de ambiente
 
-- Python 3.9+
+Crie um arquivo `.env` com sua chave da API Groq:
+
+```
+GROQ_API_KEY=your_api_key_here
+```
+
+---
+
+## ▶️ Como rodar
+
+```bash
+uvicorn leitorPDF:app --reload
+```
+
+Depois, acesse:  
+[http://localhost:8000/docs](http://localhost:8000/docs) para testar a API com Swagger.
+
+---
+
+## 📤 Como usar o endpoint
+
+- **Rota**: `POST /extrair`
+- **Corpo**: Envie um arquivo PDF (`multipart/form-data`)
+- **Resposta**: JSON com os dados extraídos da proposta de seguro
+
+---
+
+## 📁 Estrutura esperada na resposta
+
+```json
+{
+  "cliente": {
+    "nome": "Fulano de Tal",
+    "cpf": "000.000.000-00",
+    "data_nascimento": "1990-01-01"
+  },
+  "veiculo": {
+    "marca": "Ford",
+    "modelo": "Fiesta"
+  },
+  "apolice": {},
+  "parcelas": [],
+  "documentos_cliente": [],
+  "sinistro": null
+}
+```
+
+---
+
+## 💡 Tecnologias utilizadas
+
+- FastAPI
+- LangChain + Langchain-groq
 - Tesseract OCR
-- Poppler (para pdf2image)
-- Conta Groq e chave de API válida
+- Poppler + pdf2image
+- Python 3.11+
 
 ---
-
-## 📥 Como instalar Tesseract e Poppler (Windows)
-
-### 🔤 Tesseract OCR
-
-1. Baixe o instalador em:  
-   https://github.com/UB-Mannheim/tesseract/wiki
-
-2. Execute o instalador (`.exe`).
-
-3. O executável será instalado em:  
-   `C:\Program Files\Tesseract-OCR\tesseract.exe`
-
-### 🖼️ Poppler
-
-1. Baixe o pacote em:  
-   https://github.com/oschwartz10612/poppler-windows/releases
-
-2. Extraia o `.zip` para um local como:  
-   `C:\poppler-xx.xx.x\`
-
-3. Use o caminho da pasta `bin` no seu código, por exemplo:  
-   `C:\poppler-xx.xx.x\Library\bin`
-
----
-
-## 📦 Instalação do Projeto
-
-```bash
-git clone https://github.com/seu-usuario/seu-repositorio.git
-cd seu-repositorio
-
-python -m venv venv
-source venv/bin/activate  # ou venv\Scripts\activate no Windows
-
-pip install pdf2image pytesseract pillow python-dotenv langchain langchain-groq
-```
-
----
-
-## 🔐 Configuração do `.env`
-
-Crie um arquivo `.env` com a sua chave Groq:
-
-```
-GROQ_API_KEY=sua_chave_aqui
-```
-
----
-
-## ▶️ Execução
-
-```bash
-python leitorPDF.py
-```
-
----
-
-## ✅ Saída esperada
-
-O script imprime no console um objeto JSON com os seguintes dados extraídos do PDF:
-
-- Informações do cliente
-- Detalhes do veículo
-- Dados da apólice
-- Parcelas
-- Documentos do cliente
-- Dados de sinistro (se houver)
-
----
-
-## ❗ Importante
-
-- Os arquivos PDF **não devem ser versionados** (estão ignorados via `.gitignore`)
-- A chave de API Groq deve estar **somente no `.env`**
-
-
 
