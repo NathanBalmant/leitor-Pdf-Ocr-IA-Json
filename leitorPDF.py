@@ -1,55 +1,35 @@
-import pdfplumber
-import os
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import JSONResponse
 import pytesseract
-
+from pdf2image import convert_from_bytes
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_groq import ChatGroq
-from pdf2image import convert_from_path
+import os
 
+# Para rodar a API use: uvicorn leitorPDF:app --reload
+
+# Inicializa
 load_dotenv()
+app = FastAPI()
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-poppler_path = r'C:\poppler-24.08.0\Library\bin'
-
+# Caminhos locais
+pytesseract.pytesseract.tesseract_cmd = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+poppler_path = r"C:\\poppler-24.08.0\\Library\\bin"
 
 api_key = os.getenv("GROQ_API_KEY")
 if not api_key:
-    print("Erro: variável GROQ_API_KEY não está definida no .env")
-    exit(1)
+    raise RuntimeError("Erro: variável GROQ_API_KEY não está definida no .env")
 
-
-pdf_path = 'pdfs/PDF2.pdf'
-
-try:
-    pages = convert_from_path(
-        pdf_path=pdf_path,
-        poppler_path=poppler_path,
+# Modelo LLM
+llm = ChatGroq(
+    api_key=api_key,
+    model='meta-llama/llama-4-scout-17b-16e-instruct',
+    temperature=0,
 )
-except Exception as e:
-    print(f"Erro ao transformar o pdf em imagem: {e}")
-    exit(1)
-
-text_data = ''
-for page in pages:
-    try:
-        text = pytesseract.image_to_string(page)
-        text_data += text + '\n'
-    except Exception as e:
-        print(f"Erro ao aplicar OCR {e}")
-        
-try:
-    llm = ChatGroq(
-        api_key=api_key,
-        model='meta-llama/llama-4-scout-17b-16e-instruct',
-        temperature=0,
-    )
-except:
-    print(f"Erro ao inicializar o modelo LLM: {e}")
 
 template = """
-
 Prompt para Extração de Dados de Propostas de Seguro - Loja de Seguros (Multi-Tenant SaaS)
 
 Sua tarefa é extrair as seguintes informações de uma proposta de seguro auto:
@@ -78,14 +58,12 @@ Se houver, inclua os dados de sinistro vinculados à apólice. Caso não exista,
 Formato de saída:
 Retorne todas as informações dentro de um único objeto JSON, com os seguintes campos principais de nível superior:
 
-
 Regras obrigatórias:
 - Se algum campo estiver ausente no texto, preencha com null.
 - Campos booleanos devem ser true ou false.
 - Valores numéricos devem ser números, não strings.
 - Datas devem estar no formato: AAAA-MM-DD.
 - Retorne apenas o JSON, sem comentários ou explicações adicionais.
-
 
 {text}
 """
@@ -95,9 +73,24 @@ prompt = PromptTemplate(
     template=template,
 )
 
-try:
-    chain = prompt | llm | JsonOutputParser()
-    response = chain.invoke({'text': text_data})
-    print(response)
-except:
-    print(f"Erro ao executar a chain: {e}")
+@app.post("/extrair")
+async def extrair_pdf(file: UploadFile = File(...)):
+    try:
+        pdf_bytes = await file.read()
+        pages = convert_from_bytes(pdf_bytes, poppler_path=poppler_path)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"erro": f"Erro ao converter PDF: {e}"})
+
+    text_data = ''
+    for page in pages:
+        try:
+            text_data += pytesseract.image_to_string(page) + '\n'
+        except Exception as e:
+            return JSONResponse(status_code=500, content={"erro": f"Erro no OCR: {e}"})
+
+    try:
+        chain = prompt | llm | JsonOutputParser()
+        response = chain.invoke({"text": text_data})
+        return response
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"erro": f"Erro ao rodar o modelo LLM: {e}"})
